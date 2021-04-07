@@ -19,25 +19,26 @@ for DOMAIN in "$DOMAINS"; do
         DOMAIN_APPS=$(aws --region $REGION sagemaker list-apps --domain-id-equals $DOMAIN | jq -rc .Apps[])
         for DOMAIN_APP in ${DOMAIN_APPS}; do
             let FOUND+=1
-            echo $DOMAIN_APP
             
             APP_NAME=$(echo $DOMAIN_APP | jq -r ".AppName")
             APP_TYPE=$(echo $DOMAIN_APP | jq -r ".AppType")
             USER_PROFILE_NAME=$(echo $DOMAIN_APP | jq -r ".UserProfileName")
             STATUS=$(echo $DOMAIN_APP | jq -rc ".Status")
+
+            STATUS_MSG="Domain=${DOMAIN} AppName=${APP_NAME} AppType=${APP_TYPE}"
+            echo "status is ${STATUS}: ${STATUS_MSG}"
             if [ "$STATUS" == "InService" ]; then
-                echo "status is InService: ${DOMAIN_APP}"
+                echo "Deleting App: ${STATUS_MSG}"
                 aws --region $REGION sagemaker delete-app \
                     --domain-id $DOMAIN \
                     --app-name $APP_NAME \
                     --app-type $APP_TYPE \
                     --user-profile-name $USER_PROFILE_NAME
             elif [ "$STATUS" == "Pending" ]; then
-                echo "status is pending: ${DOMAIN_APP}"
+                :
             elif [ "$STATUS" == "Deleting" ]; then
-                echo "status is deleting: ${DOMAIN_APP}"
+                :
             elif [ "$STATUS" == "Deleted" ]; then
-                echo "status is deleted: ${DOMAIN_APP}"
                 let DELETED+=1
             else
                 echo "Unknown status \"$STATUS\": ${DOMAIN_APP}"
@@ -45,7 +46,6 @@ for DOMAIN in "$DOMAINS"; do
         done
         if [ $FOUND -ne $DELETED ]; then
             sleep $SLEEP_DELAY
-            echo "sleep done"
         fi
     done
 
@@ -60,17 +60,18 @@ for DOMAIN in "$DOMAINS"; do
             let FOUND+=1
             USER_PROFILE_NAME=$(echo $PROFILE | jq -rc .UserProfileName)
             STATUS=$(echo $PROFILE | jq -rc ".Status")
+            STATUS_MSG="Domain=${DOMAIN} UserProfileName=${USER_PROFILE_NAME}"
+            echo "status is ${STATUS}: ${STATUS_MSG}"
             if [ "$STATUS" == "InService" ]; then
-                echo "status is InService: ${PROFILE}"
+                echo "Deleting User: ${STATUS_MSG}"
                 aws --region $REGION sagemaker delete-user-profile \
                     --domain-id $DOMAIN \
                     --user-profile-name $USER_PROFILE_NAME
             elif [ "$STATUS" == "Pending" ]; then
-                echo "status is pending: ${PROFILE}"
+                :
             elif [ "$STATUS" == "Deleting" ]; then
-                echo "status is deleting: ${PROFILE}"
+                :
             elif [ "$STATUS" == "Deleted" ]; then
-                echo "status is deleted: ${PROFILE}"
                 let DELETED+=1
             else
                 echo "Unknown status \"$STATUS\": ${PROFILE}"
@@ -78,10 +79,10 @@ for DOMAIN in "$DOMAINS"; do
         done
         if [ $FOUND -ne $DELETED ]; then
             sleep $SLEEP_DELAY
-            echo "sleep done"
         fi
-  done
+    done
 
+    echo "Deleting Domain: Domain=${DOMAIN}"
     aws --region $REGION sagemaker delete-domain \
         --domain-id $DOMAIN \
         --retention-policy HomeEfsFileSystem=Retain
